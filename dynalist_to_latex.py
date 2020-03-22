@@ -50,13 +50,14 @@ m9
 
 #TODO fix latex indentation limit - too highly nested itemization / enumerations.
         
-def uber_conversion(instring):
-    tabbed_list = convert_plaintext_to_latex(instring)
-    tab_tree_root = lines_to_indent(tabbed_list)[0]
-    display_list = display_tab_tree(tab_tree_root)
+def convert_plaintext_to_latex(instring):
+    tabbed_list = readlines(instring)
+    tab_tree_root = lines_to_tab_tree(tabbed_list)[0]
+    display_list = latexify_tab_tree(tab_tree_root)
     return '\n'.join(display_list)
 
-def convert_plaintext_to_latex(instring):
+def readlines(instring):
+    """Split instring by \n, condensing tabs into \t characters, one for each indentation level"""
     lines = instring.split('\n')
     output = [lines[0]]
     for i in range(1, len(lines)):
@@ -74,17 +75,18 @@ def convert_plaintext_to_latex(instring):
             
     return output
 
-def display_tab_tree(root):
+def latexify_tab_tree(root):
+    """takes root of tab tree and gives a string with latex additions"""
     output = []
     if root.level == 0:
         for child in root.children:
-            output += display_tab_tree(child)
+            output += latexify_tab_tree(child)
         return output
     elif root.level == 1:
         output.append(r'\section{' + format_line(root.text) + '}')
         output.append(r'\begin{itemize}')
         for child in root.children:
-            output += ['    ' + line for line in display_tab_tree(child)]
+            output += ['    ' + line for line in latexify_tab_tree(child)]
         output.append(r'\end{itemize}')
         return output
         
@@ -94,11 +96,12 @@ def display_tab_tree(root):
     if len(root.children) > 0:
         output.append(r'\begin{itemize}')
         for child in root.children:
-            output += ['    ' + line for line in display_tab_tree(child)]
+            output += ['    ' + line for line in latexify_tab_tree(child)]
         output.append(r'\end{itemize}')
     return output
     
 def format_line(line):
+    """find and replace for dynalist formatting meta characters to latex ones"""
     # inline equation
     line = re.sub('[$][$]', '$', line)
     # bold font
@@ -107,6 +110,7 @@ def format_line(line):
         
 
 class tab_tree:
+    """Data structure for different indented level lines of text"""
     def __init__(self, level, text=None, parent=None):
         self.text = text
         self.level = level
@@ -116,10 +120,11 @@ class tab_tree:
         
 
 
-def lines_to_indent(lines):
-    # G is for optional visualisation of tab_tree for debugging purposes
+def lines_to_tab_tree(lines):
+    """takes list of \t indented lines, and converts to a tab_tree, returning the root and a nx.DiGraph representation"""
     root = tab_tree(0, text=lines[0])
     current = root
+    # G is for optional visualisation of tab_tree for debugging purposes
     G = nx.DiGraph()
     print(current.level)
     for line in lines[1:]:
@@ -146,7 +151,13 @@ def lines_to_indent(lines):
 
             
 if __name__ == '__main__':
-    idk = convert_plaintext_to_latex(test_string)
-    idk2 = lines_to_indent(idk)
-    print('\n'.join(display_tab_tree(idk2[0])))
+    import sys
+    f = open(sys.argv[1])
+    contents = f.read()
+    f.close()
+    output = convert_plaintext_to_latex(contents)
+    outfile = open(sys.argv[2], 'w')
+    outfile.write(output)
+    outfile.close()
+        
 
